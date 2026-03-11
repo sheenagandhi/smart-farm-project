@@ -13,7 +13,6 @@ st.title("🌱 Smart Farming IoT & AI Dashboard")
 st.markdown("### Real-time Monitoring & Crop Disease Detection")
 
 # --- LOAD AI MODEL & CLASS NAMES ---
-# st.cache_resource ensures the heavy AI model only loads once, not every time you click a button
 @st.cache_resource
 def load_ai_doctor():
     # Load your teammate's trained model
@@ -29,11 +28,10 @@ try:
     disease_model, class_names = load_ai_doctor()
     ai_ready = True
 except Exception as e:
-    st.warning("⚠️ AI Model not found. Please ensure 'plant_disease_model.keras' and 'class_names.json' are in the folder.")
+    st.warning("⚠️ AI Model not found. Please ensure 'plant_disease_model.keras' and 'class_names.json' are uploaded.")
     ai_ready = False
 
 # --- UI LAYOUT: TWO TABS ---
-# Tabs keep the dashboard clean. One for sensors, one for the AI doctor.
 tab1, tab2 = st.tabs(["📊 Live Sensor Data", "🩺 AI Crop Doctor"])
 
 # ==========================================
@@ -75,38 +73,27 @@ with tab1:
 with tab2:
     st.header("Upload a leaf image for diagnosis")
     
-    # The file uploader widget
     uploaded_file = st.file_uploader("Choose a plant leaf image...", type=["jpg", "jpeg", "png"])
     
     if uploaded_file is not None and ai_ready:
-        # 1. Display the image
         image = Image.open(uploaded_file)
         st.image(image, caption='Uploaded Leaf', use_container_width=True)
         
         with st.spinner('AI is analyzing the leaf...'):
-            # 2. Format the image exactly how your teammate trained the AI
-            # Your teammate used 224x224 image sizes in their MobileNetV2 setup
+            # Format the image for the MobileNetV2 AI
             img_resized = image.resize((224, 224)) 
             img_array = tf.keras.preprocessing.image.img_to_array(img_resized)
-            
-            # Your teammate scaled the pixels by dividing by 255
             img_array = img_array / 255.0 
-            
-            # Add a "batch" dimension because the AI expects a list of images
             img_array = np.expand_dims(img_array, axis=0)
             
-            # 3. Make the Prediction!
+            # Predict
             predictions = disease_model.predict(img_array)
-            
-            # Find the highest probability score
             predicted_class_index = np.argmax(predictions)
             confidence_score = np.max(predictions) * 100
             
-            # Translate the index number to the actual disease name using the JSON file
-            # The JSON keys are strings, so we convert the index to a string
             predicted_disease = class_names[str(predicted_class_index)]
             
-            # 4. Display Results
+            # Results
             st.divider()
             if "healthy" in predicted_disease.lower():
                 st.success(f"### Diagnosis: {predicted_disease.replace('_', ' ')}")
